@@ -1,7 +1,7 @@
 # TopWatch
 
 ## Description
-A small analog clock which remains on top of other applications with a transparent background (and no window decorations with some decoration managers) built with pyQt
+A small analog clock which remains on top of other applications with a transparent background (and no window decorations with some decoration managers) built with pyQt.
 
 # What is required to run it ?
 
@@ -20,8 +20,8 @@ Not much... This is my first program with pyQt, coming from tkinter applications
 - [x] Be moved by left clicking and dragging on the window
 - [x] Be closed by right clicking on the window
 - [x] Change the text color from the Settings/Text Color menu bar (Ctrl+C)
-- [] Resize the text
-- [] Change the text font
-- [] Save font, size and color into a configuration file
+- [ ] Resize the text
+- [ ] Change the text font
+- [ ] Save font, size and color into a configuration file
 
 **This piece of code has only been tested on an Ubuntu 20.04.1 LTS 64 bits with python 3.6.**

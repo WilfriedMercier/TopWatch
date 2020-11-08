@@ -24,4 +24,4 @@ Not much... This is my first program with pyQt, coming from tkinter applications
 - [ ] Change the text font
 - [ ] Save font, size and color into a configuration file
 
-**This piece of code has only been tested on an Ubuntu 20.04.1 LTS 64 bits with python 3.6.**
+**This piece of code has only been tested on an Ubuntu 20.04.1 LTS 64 bits machine with python 3.6.**

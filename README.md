@@ -15,13 +15,13 @@ wilfried:~$ pip install PyQt5
 
 Not much... This is my first program with pyQt, coming from tkinter applications, so it is very simple. Here is a list of what is does (not) currently do:
 
-- [x] Print and update the time
-- [x] Transparent background and no window decorations for some platforms and window managers
+- [x] Show and update the time
+- [x] Transparent background and no window decorations for Linux and Mac platforms
 - [x] Be moved by left clicking and dragging on the window
 - [x] Be closed by right clicking on the window
 - [x] Change the text color from the Settings/Text Color menu bar (Ctrl+C)
 - [x] Resize the text using the UP and DOWN arrows
-- [ ] Change the text font
+- [x] Change the text font from the Settings/Change font menu bar (Ctrl+F)
 - [ ] Save font, size and color into a configuration file
 
 **This piece of code has been tested on an Ubuntu 20.04.1 LTS 64 bits machine with python 3.6. The code should work on MAC OS as well, but bugs may be encountered.**

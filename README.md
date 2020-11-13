@@ -20,8 +20,8 @@ Not much... This is my first program with pyQt, coming from tkinter applications
 - [x] Be moved by left clicking and dragging on the window
 - [x] Be closed by right clicking on the window
 - [x] Change the text color from the Settings/Text Color menu bar (Ctrl+C)
-- [ ] Resize the text
+- [x] Resize the text using the UP and DOWN arrows
 - [ ] Change the text font
 - [ ] Save font, size and color into a configuration file
 
-**This piece of code has only been tested on an Ubuntu 20.04.1 LTS 64 bits machine with python 3.6.**
+**This piece of code has been tested on an Ubuntu 20.04.1 LTS 64 bits machine with python 3.6. The code should work on MAC OS as well, but bugs may be encountered.**

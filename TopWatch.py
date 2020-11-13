@@ -1,4 +1,3 @@
-import os
 import sys
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -15,10 +14,10 @@ class App(QMainWindow):
 
         super().__init__()
         self.setWindowTitle('TopWatch')
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        
+
         # set app icon
         scriptDir = opath.dirname(opath.realpath(__file__))
         self.setWindowIcon(QIcon(opath.join(scriptDir, 'icon.png')))
@@ -27,21 +26,19 @@ class App(QMainWindow):
         self.label = QLabel('', self)
         self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.label.setAlignment(Qt.AlignCenter)
-        self.color      = QColor()
+        self.font       = QFont('fixed', 30, QFont.Bold)
         self.label.setStyleSheet('QLabel { color: #ffdd1c}')
-        self.label.setFont(QFont('fixed', 30, QFont.Bold))
+        self.label.setFont(self.font)
         self.showTime()
         
         self.setCentralWidget(self.label)
         
         # Set menu
         menubar        = self.menuBar()
-        colorAction    = QAction('&Text color', self)        
+        colorAction    = QAction('&Text color', self)
         colorAction.setShortcut('Ctrl+C')
         colorAction.setStatusTip('Change text color')
         colorAction.triggered.connect(self.changeColor)
-        
-        self.statusBar()
         
         self.colormenu = menubar.addMenu('&Settings')
         self.colormenu.addAction(colorAction)
@@ -51,8 +48,11 @@ class App(QMainWindow):
         self.timer.start(1000)
 
         self.show()
-        self.setFixedSize(self.size())
-        
+
+        width  = self.label.fontMetrics().width(self.label.text())+5
+        height = self.label.fontMetrics().height()+5
+        self.setFixedSize(width, height)
+
     def changeColor(self, *args, **kwargs):
         '''Ask for a text color and change it.'''
         
@@ -68,6 +68,27 @@ class App(QMainWindow):
         
         if timeStr != self.label.text():
             self.label.setText(timeStr)
+        return
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Down:
+           newSize = self.font.pointSize()-1
+           if newSize < 1:
+               newSize = 1
+
+           self.font.setPointSize(newSize)
+           self.label.setFont(self.font)
+
+        elif e.key() == Qt.Key_Up:
+           self.font.setPointSize(self.font.pointSize()+1)
+           self.label.setFont(self.font)
+        else:
+           return
+
+        width  = self.label.fontMetrics().width(self.label.text())+5
+        height = self.label.fontMetrics().height()+5
+        self.setFixedSize(width, height)
+
         return
 
     ############################################

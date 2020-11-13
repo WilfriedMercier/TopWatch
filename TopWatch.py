@@ -4,7 +4,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os.path         as     opath
 
-from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog
+from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog
 from   PyQt5.QtGui     import QFont, QColor, QIcon
 from   PyQt5.QtCore    import Qt, QPoint, QTimer, QDateTime
 
@@ -39,56 +39,83 @@ class App(QMainWindow):
         colorAction.setShortcut('Ctrl+C')
         colorAction.setStatusTip('Change text color')
         colorAction.triggered.connect(self.changeColor)
+
+        fontAction     = QAction('&Change font', self)
+        fontAction.setShortcut('Ctrl+F')
+        fontAction.setStatusTip('Change text font')
+        fontAction.triggered.connect(self.changeFont)
         
-        self.colormenu = menubar.addMenu('&Settings')
-        self.colormenu.addAction(colorAction)
-        
-        self.timer    = QTimer()
+        self.settingmenu = menubar.addMenu('&Settings')
+        self.settingmenu.addAction(colorAction)
+        self.settingmenu.addAction(fontAction)
+
+        # Start timer
+        self.timer     = QTimer()
         self.timer.timeout.connect(self.showTime)
         self.timer.start(1000)
 
         self.show()
 
-        width  = self.label.fontMetrics().width(self.label.text())+5
-        height = self.label.fontMetrics().height()+5
+        # Set dimensions relative to label dimensions
+        width          = self.label.fontMetrics().width(self.label.text())+5
+        height         = self.label.fontMetrics().height()+5
         self.setFixedSize(width, height)
+
+
+    #############################################
+    #               Miscellaneous               #
+    #############################################
 
     def changeColor(self, *args, **kwargs):
         '''Ask for a text color and change it.'''
-        
+
         color = QColorDialog.getColor()
-        self.label.setStyleSheet('QLabel { color: %s }' %color.name())
+        if color.isValid():
+           self.label.setStyleSheet('QLabel { color: %s }' %color.name())
         return
 
-    def showTime(self):
-        '''Update the time label when value has changed.'''
-        
-        time       = QDateTime.currentDateTime()
-        timeStr    = time.toString('hh:mm')
-        
-        if timeStr != self.label.text():
-            self.label.setText(timeStr)
+    def changeFont(self, *args, **kwargs):
+        '''Ask for a text style and change it.'''
+
+        font, ok = QFontDialog.getFont()
+        if ok:
+           self.font = font
+           self.updateFont()
         return
 
-    def keyPressEvent(self, e):
+    def keyPressEvent(self, e, *args, **kwargs):
         if e.key() == Qt.Key_Down:
            newSize = self.font.pointSize()-1
            if newSize < 1:
                newSize = 1
 
            self.font.setPointSize(newSize)
-           self.label.setFont(self.font)
 
         elif e.key() == Qt.Key_Up:
            self.font.setPointSize(self.font.pointSize()+1)
-           self.label.setFont(self.font)
         else:
            return
 
-        width  = self.label.fontMetrics().width(self.label.text())+5
-        height = self.label.fontMetrics().height()+5
-        self.setFixedSize(width, height)
+        self.updateFont()
+        return
 
+    def updateFont(self, *args, **kwargs):
+        '''Update the label font with the value given in self.font and update the window size accordingly.'''
+
+        self.label.setFont(self.font)
+        width  = self.label.fontMetrics().width(self.label.text())+2
+        height = self.label.fontMetrics().height()+2
+        self.setFixedSize(width, height)
+        return
+
+    def showTime(self, *args, **kwargs):
+        '''Update the time label when value has changed.'''
+
+        time       = QDateTime.currentDateTime()
+        timeStr    = time.toString('hh:mm')
+        
+        if timeStr != self.label.text():
+            self.label.setText(timeStr)
         return
 
     ############################################

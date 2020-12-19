@@ -11,9 +11,11 @@ from   PyQt5.QtCore    import Qt, QPoint, QTimer, QDateTime
 # Own imports
 import setup
 
-
 class App(QMainWindow):
     def __init__(self, *arg, **kwargs):
+        '''
+        Initialize the Application.
+        '''
 
         super().__init__()
         self.setWindowTitle('TopWatch')
@@ -25,14 +27,18 @@ class App(QMainWindow):
         scriptDir = opath.dirname(opath.realpath(__file__))
         self.setWindowIcon(QIcon(opath.join(scriptDir, 'icon.png')))
 
-        # Setup initial color and font
+        # Setup initial color, font and window position
         configuration, ok = setup.init()
-        self.color = configuration['color']
-        self.font  = QFont()
+        self.color        = configuration['color']
+        self.font         = QFont()
         self.font.fromString(configuration['font'])
 
+        self.xpos         = configuration['x']
+        self.ypos         = configuration['y']
+        self.setGeometry(self.xpos, self.ypos, self.geometry().width(), self.geometry().height())
+
         # Add label
-        self.label = QLabel('', self)
+        self.label        = QLabel('', self)
         self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet('QLabel { color: %s}' %self.color)
@@ -42,45 +48,45 @@ class App(QMainWindow):
         self.setCentralWidget(self.label)
 
         # Set menu
-        menubar        = self.menuBar()
-        colorAction    = QAction('&Text color', self)
+        menubar           = self.menuBar()
+        colorAction       = QAction('&Text color', self)
         colorAction.setShortcut('Ctrl+C')
         colorAction.setStatusTip('Change text color')
         colorAction.triggered.connect(self.changeColor)
 
-        fontAction     = QAction('&Change font', self)
+        fontAction        = QAction('&Change font', self)
         fontAction.setShortcut('Ctrl+F')
         fontAction.setStatusTip('Change text font')
         fontAction.triggered.connect(self.changeFont)
 
-        resetAction    = QAction('&Reset', self)
+        resetAction       = QAction('&Reset', self)
         resetAction.setShortcut('Ctrl+Alt+R')
         resetAction.setStatusTip('Reset configuration')
         resetAction.triggered.connect(self.reset)
 
-        saveAction     = QAction('&Save', self)
+        saveAction        = QAction('&Save', self)
         saveAction.setShortcut('Ctrl+S')
         saveAction.setStatusTip('Save current configuration')
         saveAction.triggered.connect(self.save)
 
-        self.filemenu    = menubar.addMenu('&File')
+        self.filemenu     = menubar.addMenu('&File')
         self.filemenu.addAction(saveAction)
 
-        self.settingmenu = menubar.addMenu('&Settings')
+        self.settingmenu  = menubar.addMenu('&Settings')
         self.settingmenu.addAction(colorAction)
         self.settingmenu.addAction(fontAction)
         self.settingmenu.addAction(resetAction)
 
         # Start timer
-        self.timer     = QTimer()
+        self.timer        = QTimer()
         self.timer.timeout.connect(self.showTime)
         self.timer.start(1000)
 
         self.show()
 
         # Set dimensions relative to label dimensions
-        width          = self.label.fontMetrics().width(self.label.text())+5
-        height         = self.label.fontMetrics().height()+5
+        width             = self.label.fontMetrics().width(self.label.text())+5
+        height            = self.label.fontMetrics().height()+5
         self.setFixedSize(width, height)
 
 
@@ -147,8 +153,15 @@ class App(QMainWindow):
     def save(self, *args, **kwargs):
         '''Save the current configuration.'''
 
-        configuration = {'font':self.font.toString(),
-                         'color':self.color.name()
+        try:
+            color = self.color.name()
+        except AttributeError:
+            color = self.color
+
+        configuration = {'font' : self.font.toString(),
+                         'color': color,
+                         'x'    : self.x(),
+                         'y'    : self.y()
                         }
         setup.writeConfiguration('settings.yaml', configuration)
         return
@@ -185,7 +198,7 @@ class App(QMainWindow):
 
 
 if __name__ == '__main__':
-    root = QApplication(sys.argv)
-    app  = App()
+    root   = QApplication(sys.argv)
+    app    = App()
     sys.exit(root.exec_())
 

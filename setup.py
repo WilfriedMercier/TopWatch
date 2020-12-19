@@ -20,8 +20,11 @@ def default(outname, *args, **kwargs):
    '''
 
    configuration = {'font'    : 'fixed,30,-1,5,75,0,0,0,0,0',
-                    'color'   : '#ffdd1c'
+                    'color'   : '#ffdd1c',
+                    'x'       : 0,
+                    'y'       : 0
                    }
+
    writeConfiguration(outname, configuration)
    return
 
@@ -52,7 +55,7 @@ def init(*args, **kwargs):
 
    # If the file does not exist, a default one is created
    if not opath.isfile(file):
-      default(file)
+      default(file, x, y)
 
    # Load configuration option from setting file
    with open(file, 'r') as f:
@@ -60,11 +63,11 @@ def init(*args, **kwargs):
 
    # If a key is missing, the setting file is saved and a new one is created with default values
    errCode        = 0
-   for i in ['font', 'color']:
+   for i in ['font', 'color', 'x', 'y']:
       if i not in settings.keys():
          print('Error in setting file %s. The key %s was missing. Generating a new default configuration file instead.' %(file, i))
          os.rename(r'%s' %file, r'~%s' %file)
-         default(file)
+         default(file, x, y)
          settings = load(file, Loader=Loader)
          errCode  = -1
 

@@ -22,7 +22,7 @@ Not much... This is my first program with pyQt, coming from tkinter applications
 - [x] Change the text color from the Settings/Text Color menu bar (Ctrl+C)
 - [x] Resize the text using the UP and DOWN arrows
 - [x] Change the text font from the Settings/Change font menu bar (Ctrl+F)
-- [x] Save font  and color into a configuration file
+- [x] Save font, color and window position into a configuration file
 - [x] Reset the font and color from the menu
 
 **This piece of code has been tested on an Ubuntu 20.04.1 LTS 64 bits machine with python 3.6. The code should work on MAC OS as well, but bugs may be encountered.**

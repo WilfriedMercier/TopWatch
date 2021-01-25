@@ -24,7 +24,6 @@ def default(outname, *args, **kwargs):
                     'x'       : 0,
                     'y'       : 0
                    }
-
    writeConfiguration(outname, configuration)
    return
 
@@ -45,17 +44,23 @@ def writeConfiguration(outname, configuration, *args, **kwargs):
       f.write(output)
    return
 
-def init(*args, **kwargs):
+def init(scriptDir, *args, **kwargs):
    '''
    Initialise code parameters at startup.
+
+   Parameters
+   ---------
+      sriptDir : str
+         location of the code and the yaml file(s)
+
    Return the settings dictionnary and an error code (0 if ok, -1 if error).
    '''
 
-   file           = 'settings.yaml'
+   file           = opath.join(scriptDir, 'settings.yaml')
 
    # If the file does not exist, a default one is created
    if not opath.isfile(file):
-      default(file, x, y)
+      default(file, 0, 0)
 
    # Load configuration option from setting file
    with open(file, 'r') as f:

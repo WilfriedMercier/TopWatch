@@ -2,6 +2,7 @@ import sys
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+import os
 import os.path         as     opath
 
 from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog
@@ -24,11 +25,11 @@ class App(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
 
         # set app icon
-        scriptDir = opath.dirname(opath.realpath(__file__))
-        self.setWindowIcon(QIcon(opath.join(scriptDir, 'icon.png')))
+        self.scriptDir    = opath.dirname(opath.realpath(__file__))
+        self.setWindowIcon(QIcon(opath.join(self.scriptDir, 'icon.png')))
 
         # Setup initial color, font and window position
-        configuration, ok = setup.init()
+        configuration, ok = setup.init(self.scriptDir)
         self.color        = configuration['color']
         self.font         = QFont()
         self.font.fromString(configuration['font'])
@@ -163,8 +164,9 @@ class App(QMainWindow):
                          'x'    : self.x(),
                          'y'    : self.y()
                         }
-        setup.writeConfiguration('settings.yaml', configuration)
+        setup.writeConfiguration(opath.join(self.scriptDir, 'settings.yaml'), configuration)
         return
+
 
     def showTime(self, *args, **kwargs):
         '''Update the time label when value has changed.'''

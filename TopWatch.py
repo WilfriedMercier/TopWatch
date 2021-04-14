@@ -5,7 +5,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os
 import os.path         as     opath
 
-from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog
+from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog, QPushButton, QGridLayout, QWidget, QDateTimeEdit, QDesktopWidget
 from   PyQt5.QtGui     import QFont, QColor, QIcon
 from   PyQt5.QtCore    import Qt, QPoint, QTimer, QDateTime
 
@@ -23,6 +23,9 @@ class App(QMainWindow):
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
+        
+        # Attribute used to know whether bliking is active or not
+        self.blinkActive  = False
 
         # set app icon
         self.scriptDir    = opath.dirname(opath.realpath(__file__))
@@ -69,9 +72,17 @@ class App(QMainWindow):
         saveAction.setShortcut('Ctrl+S')
         saveAction.setStatusTip('Save current configuration')
         saveAction.triggered.connect(self.save)
+        
+        blinkAction       = QAction('&Blink', self)
+        blinkAction.setShortcut('Ctrl+b')
+        blinkAction.setStatusTip('Blink configuration')
+        blinkAction.triggered.connect(self.blink)
 
         self.filemenu     = menubar.addMenu('&File')
         self.filemenu.addAction(saveAction)
+        
+        self.editmenu     = menubar.addMenu('&Edit')
+        self.editmenu.addAction(blinkAction)
 
         self.settingmenu  = menubar.addMenu('&Settings')
         self.settingmenu.addAction(colorAction)
@@ -90,6 +101,27 @@ class App(QMainWindow):
         height            = self.label.fontMetrics().height()+5
         self.setFixedSize(width, height)
 
+
+    #####################################
+    #        Blink windows setup        #
+    #####################################
+
+    def blink(self, *args, **kwargs):
+        '''
+        Creates a window to setup blinking.
+        If blinking is activated, calling this function deactivates it.
+        '''
+        
+        if self.blinkActive:
+            self.blinkActive = False
+            pass
+        else:
+            blinkDialog = BlinkWindow(self)
+            blinkDialog.show()
+            self.blinkActive = True
+            pass
+        return
+        
 
     #############################################
     #               Miscellaneous               #
@@ -197,6 +229,63 @@ class App(QMainWindow):
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.oldPos = event.globalPos()
         return
+    
+    
+class BlinkWindow(QMainWindow):
+    def __init__(self, parent, *arg, **kwargs):
+        '''
+        Initialize the Window.
+        '''
+
+        super().__init__(parent)
+        self.setWindowTitle('TopWatch - Setup blinking')
+        self.setWindowFlags(Qt.Dialog)
+        sizeObject = QDesktopWidget().screenGeometry(-1)
+        self.setGeometry(sizeObject.width()//2, sizeObject.height()//2, self.geometry().width(), self.geometry().height())
+        
+        # Time edit label
+        self.teditTxt = QLabel()
+        self.teditTxt.setText('Blinking frequency (hh:mm:ss)')
+        
+        # Time edit widget
+        self.tedit    = QDateTimeEdit(self)
+        self.tedit.setDisplayFormat('hh:mm:ss')
+        
+        # Start time edit label
+        self.startTxt = QLabel()
+        self.startTxt.setText('Start in (hh:mm:ss)')
+        
+        # Start time edit widget
+        self.startedi = QDateTimeEdit(self)
+        self.startedi.setDisplayFormat('hh:mm:ss')
+        
+        # Ok button setup
+        self.okButton = QPushButton(self)
+        self.okButton.setText('Ok')
+        self.okButton.setToolTip("Activate blinking")
+        
+        # Cancel button setup
+        self.cancelButton = QPushButton(self)
+        self.cancelButton.setText('Cancel')
+        self.cancelButton.clicked.connect(self.close)
+        self.cancelButton.setToolTip("Cancel blinking setup")
+        
+        # Layout
+        self.layout      = QGridLayout()
+        
+        self.layout.addWidget(self.okButton,     2, 0)
+        self.layout.addWidget(self.cancelButton, 2, 1)
+        
+        self.layout.addWidget(self.teditTxt,     0, 0)
+        self.layout.addWidget(self.tedit,        1, 0)
+        
+        self.layout.addWidget(self.startTxt,     0, 1)
+        self.layout.addWidget(self.startedi,     1, 1)
+        
+        self.mainWidget   = QWidget()
+        self.mainWidget.setLayout(self.layout)
+        self.setCentralWidget(self.mainWidget)
+
 
 
 if __name__ == '__main__':

@@ -26,10 +26,13 @@ class App(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         
         # Attributes used to know whether bliking is active or not
-        self.opacity      = 1
         self.blinkActive  = False
         self.blinkFreq    = None
         self.blinkStart   = None
+
+        # Label opacity
+        self.opacity      = 1
+        self._opacity     = 1
 
         # set app icon
         self.scriptDir    = opath.dirname(opath.realpath(__file__))
@@ -80,7 +83,7 @@ class App(QMainWindow):
         blinkAction       = QAction('&Blink', self)
         blinkAction.setShortcut('Ctrl+b')
         blinkAction.setStatusTip('Blink configuration')
-        blinkAction.triggered.connect(self.blink)
+        blinkAction.triggered.connect(self.blinkWindow)
 
         self.filemenu     = menubar.addMenu('&File')
         self.filemenu.addAction(saveAction)
@@ -97,11 +100,15 @@ class App(QMainWindow):
         self.timer        = QTimer()
         self.timer.timeout.connect(self.showTime)
         self.timer.start(1000)
-        
+
         # Blink timer
         self.blinktimer  = QTimer()
-        self.blinktimer.timeout.connect(self.blink_text)
-        
+        self.blinktimer.timeout.connect(self.run_blink)
+
+        # Small timer used to make the text flicker rapidly
+        self.smalltimer = QTimer()
+        self.smalltimer.timeout.connect(self.blink_text)
+
         self.op = QGraphicsOpacityEffect(self)
         self.op.setOpacity(self.opacity)
         self.label.setGraphicsEffect(self.op)
@@ -119,35 +126,52 @@ class App(QMainWindow):
     #        Blink windows setup        #
     #####################################
 
-    def blink(self, *args, **kwargs):
+    def blinkWindow(self, *args, **kwargs):
         '''
         Creates a window to setup blinking.
         If blinking is activated, calling this function deactivates it.
         '''
-        
+
         if self.blinkActive:
             # Reset to default values and show back the clock
             self.blinkActive = False
             self.blinkFreq   = None
             self.blinkStart  = None
-            self.setWindowOpacity(1)
+
+            # Stop timers
+            self.smalltimer.stop()
             self.blinktimer.stop()
+
+            # Resume previous opacity
+            self.opacity     = self._opacity
+            self.setLabelOpacity(self.opacity)
         else:
             blinkDialog      = BlinkWindow(self)
             blinkDialog.show()
-            
+
         return
-    
-    
+
     def blink_text(self, *args, **kwargs):
-        '''Function called every time the text is blinked.'''
-        
-        print('coucou')
-        self.setLabelOpacity(self.opacity)
-        
+        '''Function used to make the text blink a given number of times.'''
+
+        self.cnt += 1
+        self.setLabelOpacity(1-self.opacity)
+
+        # Blink 9 times for now and then stop small timer
+        if self.cnt == 9:
+            self.setLabelOpacity(0)
+            self.smalltimer.stop()
+
         return
-    
-    
+
+    def run_blink(self, *args, **kwargs):
+        '''Function called ever time the text must be blinked.'''
+
+        # Counter used to know when to stop the flickering
+        self.cnt         = 0
+        self.smalltimer.start(100)
+        return
+
     def start_blink(self, startedit, tedit, *args, **kwargs):
         '''
         Starts blinking of the clock.
@@ -155,15 +179,19 @@ class App(QMainWindow):
         :param QTimeEdit startedit: time offset applied before starting blinking
         :param QTimeEdit tedit: time between two blinks
         '''
-        
+
         self.blinkActive = True
-        start = sum([int(i)*60**pos for pos, i in enumerate(startedit.toString().split(':')[::-1])]) * 1000
-        blink = sum([int(i)*60**pos for pos, i in enumerate(tedit.toString().split(':')[::-1])]) * 1000
-        
+        start            = sum([int(i)*60**pos for pos, i in enumerate(startedit.toString().split(':')[::-1])]) * 1000
+        blink            = sum([int(i)*60**pos for pos, i in enumerate(tedit.toString().split(':')[::-1])]) * 1000
+
+        # Save opacity for when we go back to normal
+        self._opacity    = self.opacity
+        self.setLabelOpacity(0)
+
         self.blinktimer.start(blink)
         return
-        
-        
+
+
     #############################################
     #               Miscellaneous               #
     #############################################

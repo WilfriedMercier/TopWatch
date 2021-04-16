@@ -1,13 +1,14 @@
 import sys
 import signal
+import time
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os
 import os.path         as     opath
 
-from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog, QPushButton, QGridLayout, QWidget, QDateTimeEdit, QDesktopWidget
+from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog, QPushButton, QGridLayout, QWidget, QTimeEdit, QDesktopWidget, QGraphicsOpacityEffect
 from   PyQt5.QtGui     import QFont, QColor, QIcon
-from   PyQt5.QtCore    import Qt, QPoint, QTimer, QDateTime
+from   PyQt5.QtCore    import Qt, QPoint, QTimer, QDateTime, QTime
 
 # Own imports
 import setup
@@ -24,8 +25,11 @@ class App(QMainWindow):
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         
-        # Attribute used to know whether bliking is active or not
+        # Attributes used to know whether bliking is active or not
+        self.opacity      = 1
         self.blinkActive  = False
+        self.blinkFreq    = None
+        self.blinkStart   = None
 
         # set app icon
         self.scriptDir    = opath.dirname(opath.realpath(__file__))
@@ -93,6 +97,15 @@ class App(QMainWindow):
         self.timer        = QTimer()
         self.timer.timeout.connect(self.showTime)
         self.timer.start(1000)
+        
+        # Blink timer
+        self.blinktimer  = QTimer()
+        self.blinktimer.timeout.connect(self.blink_text)
+        
+        self.op = QGraphicsOpacityEffect(self)
+        self.op.setOpacity(self.opacity)
+        self.label.setGraphicsEffect(self.op)
+        self.setAutoFillBackground(True)
 
         self.show()
 
@@ -113,19 +126,59 @@ class App(QMainWindow):
         '''
         
         if self.blinkActive:
+            # Reset to default values and show back the clock
             self.blinkActive = False
-            pass
+            self.blinkFreq   = None
+            self.blinkStart  = None
+            self.setWindowOpacity(1)
+            self.blinktimer.stop()
         else:
-            blinkDialog = BlinkWindow(self)
+            blinkDialog      = BlinkWindow(self)
             blinkDialog.show()
-            self.blinkActive = True
-            pass
+            
+        return
+    
+    
+    def blink_text(self, *args, **kwargs):
+        '''Function called every time the text is blinked.'''
+        
+        print('coucou')
+        self.setLabelOpacity(self.opacity)
+        
+        return
+    
+    
+    def start_blink(self, startedit, tedit, *args, **kwargs):
+        '''
+        Starts blinking of the clock.
+
+        :param QTimeEdit startedit: time offset applied before starting blinking
+        :param QTimeEdit tedit: time between two blinks
+        '''
+        
+        self.blinkActive = True
+        start = sum([int(i)*60**pos for pos, i in enumerate(startedit.toString().split(':')[::-1])]) * 1000
+        blink = sum([int(i)*60**pos for pos, i in enumerate(tedit.toString().split(':')[::-1])]) * 1000
+        
+        self.blinktimer.start(blink)
         return
         
-
+        
     #############################################
     #               Miscellaneous               #
     #############################################
+    
+    def setLabelOpacity(self, value, *args, **kwargs):
+        '''Set the opacity of the label.'''
+        
+        if value > 1:
+            value = 1
+        elif value < 0:
+            value = 0
+            
+        self.opacity = value
+        self.op.setOpacity(self.opacity)
+        return
 
     def changeColor(self, *args, **kwargs):
         '''Ask for a text color and change it.'''
@@ -146,19 +199,29 @@ class App(QMainWindow):
         return
 
     def keyPressEvent(self, e, *args, **kwargs):
-        if e.key() == Qt.Key_Down:
-           newSize = self.font.pointSize()-1
-           if newSize < 1:
-               newSize = 1
-
-           self.font.setPointSize(newSize)
-
-        elif e.key() == Qt.Key_Up:
-           self.font.setPointSize(self.font.pointSize()+1)
+        ''''Actions taken when a key is pressed.'''
+        
+        # Deal with shift key being pressed first
+        if e.modifiers() & Qt.ShiftModifier:
+            if e.key() == Qt.Key_Up:
+                self.setLabelOpacity(self.opacity+0.05)
+            elif e.key() == Qt.Key_Down:
+                self.setLabelOpacity(self.opacity-0.05)
         else:
-           return
-
-        self.updateFont()
+            if e.key() == Qt.Key_Down:
+               newSize = self.font.pointSize()-1
+               if newSize < 1:
+                   newSize = 1
+    
+               self.font.setPointSize(newSize)
+    
+            elif e.key() == Qt.Key_Up:
+               self.font.setPointSize(self.font.pointSize()+1)
+    
+            else:
+               return
+    
+            self.updateFont()
         return
 
     def reset(self, *args, **kwargs):
@@ -238,6 +301,8 @@ class BlinkWindow(QMainWindow):
         '''
 
         super().__init__(parent)
+        self.parent    = parent
+        
         self.setWindowTitle('TopWatch - Setup blinking')
         self.setWindowFlags(Qt.Dialog)
         sizeObject = QDesktopWidget().screenGeometry(-1)
@@ -248,20 +313,22 @@ class BlinkWindow(QMainWindow):
         self.teditTxt.setText('Blinking frequency (hh:mm:ss)')
         
         # Time edit widget
-        self.tedit    = QDateTimeEdit(self)
+        self.tedit    = QTimeEdit(self)
         self.tedit.setDisplayFormat('hh:mm:ss')
+        self.tedit.setTime(QTime(0, 0, 1))
         
         # Start time edit label
         self.startTxt = QLabel()
         self.startTxt.setText('Start in (hh:mm:ss)')
         
         # Start time edit widget
-        self.startedi = QDateTimeEdit(self)
+        self.startedi = QTimeEdit(self)
         self.startedi.setDisplayFormat('hh:mm:ss')
         
         # Ok button setup
         self.okButton = QPushButton(self)
         self.okButton.setText('Ok')
+        self.okButton.clicked.connect(self.ok)
         self.okButton.setToolTip("Activate blinking")
         
         # Cancel button setup
@@ -285,6 +352,25 @@ class BlinkWindow(QMainWindow):
         self.mainWidget   = QWidget()
         self.mainWidget.setLayout(self.layout)
         self.setCentralWidget(self.mainWidget)
+        
+        
+    ###############################
+    #           Methods           #
+    ###############################
+    
+    def keyPressEvent(self, e, *args, **kwargs):
+        if e.key() == Qt.Key_Escape:
+           self.close()
+        elif e.key() == Qt.Key_Return:
+            self.ok(*args, **kwargs)
+        return
+        
+    def ok(self, *args, **kwargs):
+        '''Return True followed by the blinking frequency and the time delay as date methods of QTimeEdit.'''
+        
+        self.parent.start_blink(self.startedi.time(), self.tedit.time())
+        self.close()
+        return
 
 
 

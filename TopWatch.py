@@ -6,7 +6,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os
 import os.path         as     opath
 
-from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog, QPushButton, QGridLayout, QWidget, QTimeEdit, QDesktopWidget, QGraphicsOpacityEffect
+from   PyQt5.QtWidgets import QApplication, QAction, QLabel, QSizePolicy, QMainWindow, QColorDialog, QFontDialog, QPushButton, QGridLayout, QWidget, QTimeEdit, QDesktopWidget, QGraphicsOpacityEffect, QDoubleSpinBox
 from   PyQt5.QtGui     import QFont, QColor, QIcon
 from   PyQt5.QtCore    import Qt, QPoint, QTimer, QDateTime, QTime
 
@@ -24,14 +24,8 @@ class App(QMainWindow):
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        
-        # Attributes used to know whether bliking is active or not
-        self.blinkActive  = False
-        self.blinkFreq    = None
-        self.blinkStart   = None
 
-        # Label opacity
-        self.opacity      = 1
+        # Hidden opacity used as a temporary slot when opacity is changed for blinking
         self._opacity     = 1
 
         # set app icon
@@ -47,6 +41,13 @@ class App(QMainWindow):
         self.xpos         = configuration['x']
         self.ypos         = configuration['y']
         self.setGeometry(self.xpos, self.ypos, self.geometry().width(), self.geometry().height())
+
+        self.opacity      = configuration['opacity']
+
+        self.blinkActive  = False
+        self.blinkPeriod  = configuration['blinkPeriod']
+        self.blinkNb      = configuration['blinkNb']
+        self.blinkFreq    = configuration['blinkFreq']
 
         # Add label
         self.label        = QLabel('', self)
@@ -135,8 +136,6 @@ class App(QMainWindow):
         if self.blinkActive:
             # Reset to default values and show back the clock
             self.blinkActive = False
-            self.blinkFreq   = None
-            self.blinkStart  = None
 
             # Stop timers
             self.smalltimer.stop()
@@ -158,7 +157,7 @@ class App(QMainWindow):
         self.setLabelOpacity(1-self.opacity)
 
         # Blink 9 times for now and then stop small timer
-        if self.cnt == 9:
+        if self.cnt == self.blinkNb:
             self.setLabelOpacity(0)
             self.smalltimer.stop()
 
@@ -172,23 +171,45 @@ class App(QMainWindow):
         self.smalltimer.start(100)
         return
 
-    def start_blink(self, startedit, tedit, *args, **kwargs):
+    def start_blink(self, blinkfreq, period, nb, *args, **kwargs):
         '''
         Starts blinking of the clock.
 
-        :param QTimeEdit startedit: time offset applied before starting blinking
-        :param QTimeEdit tedit: time between two blinks
+        :param float blinkfreq: number of ms between blinks
+        :param QTimeEdit period: time between two blink phases
+        :param int nb: number of blinks per blink phase
         '''
 
+        if not isinstance(blinkfreq, (int, float)):
+            raise TypeError('Blinking frequency must be an int but is given as a %s' %type(blinkfreq))
+        else:
+            blinkfreq    = int(blinkfreq)
+
+        if blinkfreq <= 0:
+            raise ValueError('Blinking frequency must be positive only (current value is %f)' %blinkfreq)
+
+        if not isinstance(nb, (int, float)):
+            raise TypeError('Number of blinks must be int but is given as a %s' %type(nb))
+        else:
+            nb           = int(nb)
+
+        if nb <= 0:
+            raise ValueError('Number of blinks must be positive only (current value is %d)' %nb)
+
+        # Store values if the user save the current configuration later on
         self.blinkActive = True
-        start            = sum([int(i)*60**pos for pos, i in enumerate(startedit.toString().split(':')[::-1])]) * 1000
-        blink            = sum([int(i)*60**pos for pos, i in enumerate(tedit.toString().split(':')[::-1])]) * 1000
+        self.blinkNb     = nb
+        self.blinkFreq   = blinkfreq # in ms
+        self.blinkPeriod = period
+
+        # Period between blinking phases in ms
+        period_ms        = sum([int(i)*60**pos for pos, i in enumerate(self.blinkPeriod.toString().split(':')[::-1])]) * 1000
 
         # Save opacity for when we go back to normal
         self._opacity    = self.opacity
         self.setLabelOpacity(0)
 
-        self.blinktimer.start(blink)
+        self.blinktimer.start(period_ms)
         return
 
 
@@ -277,15 +298,23 @@ class App(QMainWindow):
     def save(self, *args, **kwargs):
         '''Save the current configuration.'''
 
+        # Try to save color with its name if it exists, otherwise use color code
         try:
-            color = self.color.name()
+            color     = self.color.name()
         except AttributeError:
-            color = self.color
+            color     = self.color
 
-        configuration = {'font' : self.font.toString(),
-                         'color': color,
-                         'x'    : self.x(),
-                         'y'    : self.y()
+        # Convert blinking period from Qt Qtimer to string
+        period_str    = self.blinkPeriod.toString()
+
+        configuration = {'font'        : self.font.toString(),
+                         'color'       : color,
+                         'x'           : self.x(),
+                         'y'           : self.y(),
+                         'opacity'     : round(self.opacity, 2),
+                         'blinkPeriod' : period_str,
+                         'blinkFreq'   : int(self.blinkFreq),
+                         'blinkNb'     : int(self.blinkNb)
                         }
         setup.writeConfiguration(opath.join(self.scriptDir, 'settings.yaml'), configuration)
         return
@@ -320,8 +349,7 @@ class App(QMainWindow):
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.oldPos = event.globalPos()
         return
-    
-    
+
 class BlinkWindow(QMainWindow):
     def __init__(self, parent, *arg, **kwargs):
         '''
@@ -330,73 +358,100 @@ class BlinkWindow(QMainWindow):
 
         super().__init__(parent)
         self.parent    = parent
-        
+
         self.setWindowTitle('TopWatch - Setup blinking')
         self.setWindowFlags(Qt.Dialog)
         sizeObject = QDesktopWidget().screenGeometry(-1)
         self.setGeometry(sizeObject.width()//2, sizeObject.height()//2, self.geometry().width(), self.geometry().height())
-        
+
         # Time edit label
         self.teditTxt = QLabel()
-        self.teditTxt.setText('Blinking frequency (hh:mm:ss)')
-        
+        self.teditTxt.setText('Period (hh:mm:ss)')
+
         # Time edit widget
         self.tedit    = QTimeEdit(self)
         self.tedit.setDisplayFormat('hh:mm:ss')
-        self.tedit.setTime(QTime(0, 0, 1))
-        
-        # Start time edit label
-        self.startTxt = QLabel()
-        self.startTxt.setText('Start in (hh:mm:ss)')
-        
-        # Start time edit widget
-        self.startedi = QTimeEdit(self)
-        self.startedi.setDisplayFormat('hh:mm:ss')
-        
+        self.tedit.setTime(self.parent.blinkPeriod)
+
+        # Duration edit label
+        self.lenTxt   = QLabel()
+        self.lenTxt.setText('Duration (ms)')
+
+        # Duration edit widget
+        self.lenedit  = QDoubleSpinBox(self)
+        self.lenedit.setDecimals(0)
+        self.lenedit.setMaximum(10000)
+        self.lenedit.setMinimum(50)
+        self.lenedit.setValue(self.parent.blinkFreq)
+
+        # Blink number edit label
+        self.blnbTxt  = QLabel()
+        self.blnbTxt.setText('Blink number')
+
+        # Blink number edit widget
+        self.blnbedit = QDoubleSpinBox(self)
+        self.blnbedit.setValue(self.parent.blinkNb)
+        self.blnbedit.setDecimals(0)
+        self.blnbedit.setMinimum(1)
+
         # Ok button setup
         self.okButton = QPushButton(self)
         self.okButton.setText('Ok')
         self.okButton.clicked.connect(self.ok)
         self.okButton.setToolTip("Activate blinking")
-        
+
         # Cancel button setup
         self.cancelButton = QPushButton(self)
         self.cancelButton.setText('Cancel')
-        self.cancelButton.clicked.connect(self.close)
+        self.cancelButton.clicked.connect(self.cancel)
         self.cancelButton.setToolTip("Cancel blinking setup")
-        
+
         # Layout
         self.layout      = QGridLayout()
-        
-        self.layout.addWidget(self.okButton,     2, 0)
-        self.layout.addWidget(self.cancelButton, 2, 1)
-        
+
         self.layout.addWidget(self.teditTxt,     0, 0)
         self.layout.addWidget(self.tedit,        1, 0)
-        
-        self.layout.addWidget(self.startTxt,     0, 1)
-        self.layout.addWidget(self.startedi,     1, 1)
-        
+
+        self.layout.addWidget(self.lenTxt,       2, 0)
+        self.layout.addWidget(self.lenedit,      3, 0)
+
+        self.layout.addWidget(self.blnbTxt,      2, 1)
+        self.layout.addWidget(self.blnbedit,     3, 1)
+
+        self.layout.addWidget(self.okButton,     4, 0)
+        self.layout.addWidget(self.cancelButton, 4, 1)
+
         self.mainWidget   = QWidget()
         self.mainWidget.setLayout(self.layout)
         self.setCentralWidget(self.mainWidget)
-        
-        
+
+
     ###############################
     #           Methods           #
     ###############################
-    
+
+    def cancel(self, *args, **kwargs):
+        '''When cancel is pressed blinking parameters are updated it the user wants to save later on.'''
+
+        self.parent.blinkNb     = self.blnbedit.value()
+        self.parent.blinkPeriod = self.tedit.time()
+        self.parent.blinkFreq   = self.lenedit.value()
+        self.close()
+        return
+
     def keyPressEvent(self, e, *args, **kwargs):
+        '''Actions taken when a key is pressed.'''
+
         if e.key() == Qt.Key_Escape:
-           self.close()
+           self.cancel(*args, **kwargs)
         elif e.key() == Qt.Key_Return:
             self.ok(*args, **kwargs)
         return
-        
+
     def ok(self, *args, **kwargs):
-        '''Return True followed by the blinking frequency and the time delay as date methods of QTimeEdit.'''
-        
-        self.parent.start_blink(self.startedi.time(), self.tedit.time())
+        '''Start blinking when ok is pressed.'''
+
+        self.parent.start_blink(self.lenedit.value(), self.tedit.time(), self.blnbedit.value())
         self.close()
         return
 
